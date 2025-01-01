@@ -1,0 +1,20 @@
+// a simple CIL-like stack-based virtual machine assembly language
+
+
+push "hello there."
+call println
+
+push 10
+push 20
+add
+call println
+
+// fib
+push "please input a number: "
+call print
+call readNumber
+set 0
+.fibloop
+
+
+halt 0

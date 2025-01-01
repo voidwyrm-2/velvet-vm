@@ -1,0 +1,25 @@
+@vars 1
+
+.numloop
+  push "please input a number: "
+  call print
+  call readNumber
+  je numloop
+
+set 0
+
+push 0
+push 1
+
+.fibloop
+  swap
+  dup
+  call println
+  swap
+  dup
+  rot
+  add
+  swap
+
+
+halt 0
