@@ -1,6 +1,7 @@
 package emitter
 
 import (
+	"fmt"
 	"os"
 )
 
@@ -50,11 +51,12 @@ func writeFile(filename string, data []byte) error {
 type VelvetAsm struct {
 	vars         uint8
 	instructions [][7]byte
+	labels       map[string]uint32
 	data         []byte
 }
 
 func New(vars uint8) VelvetAsm {
-	return VelvetAsm{vars: vars, instructions: [][7]byte{}, data: []byte{}}
+	return VelvetAsm{vars: vars, instructions: [][7]byte{}, labels: map[string]uint32{}, data: []byte{}}
 }
 
 func (va VelvetAsm) Write(filename string) error {
@@ -92,6 +94,37 @@ func (va *VelvetAsm) EmitString(op Opcode, flag uint8, str string) {
 	addr, length := uint16(len(va.data)), uint16(len(str))
 	va.data = append(va.data, []byte(str)...)
 	va.Emit(op, flag, addr, length)
+}
+
+func (va *VelvetAsm) CreateLabel(name string) {
+	if _, ok := va.labels[name]; ok {
+		panic(fmt.Sprintf("label '%s' already exists", name))
+	}
+	va.labels[name] = uint32(20 + len(va.instructions)*7)
+}
+
+func (va *VelvetAsm) GetLabel(name string) uint32 {
+	if addr, ok := va.labels[name]; !ok {
+		panic(fmt.Sprintf("label '%s' does not exist", name))
+	} else {
+		return addr
+	}
+}
+
+func (va *VelvetAsm) EmitNF(op Opcode, one, two uint16) {
+	va.Emit(op, 0, one, two)
+}
+
+func (va *VelvetAsm) EmitNF32(op Opcode, both uint32) {
+	va.Emit32(op, 0, both)
+}
+
+func (va *VelvetAsm) EmitNA(op Opcode, flag uint8) {
+	va.Emit(op, flag, 0, 0)
+}
+
+func (va *VelvetAsm) EmitBasic(op Opcode) {
+	va.Emit(op, 0, 0, 0)
 }
 
 func (va *VelvetAsm) Halt(code int8) {

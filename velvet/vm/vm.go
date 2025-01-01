@@ -89,6 +89,7 @@ func (vm VelvetVM) Run(bytes []uint8) error {
 		vars     []stack.StackValue
 		dataAddr int
 		errFlag  bool
+		// errReg   string // might be used to hold the error message from functions that errored out
 	)
 
 	if _vars, _dataAddr, ok := vm.VerifyBytecode(bytes); !ok {

@@ -32,19 +32,19 @@ func (s *Stack) TryPop() (StackValue, bool) {
 	return s.Pop(), true
 }
 
-func (s Stack) ExpectErr(k ...ValueKind) error {
-	for i, v := range s {
-		if i >= len(k) {
-			return fmt.Errorf("expected '%s' on the stack, but the stack is not large enough", k[i].Type())
-		} else if !v.Is(k[i]) && k[i] != Any {
-			return fmt.Errorf("expected '%s' on the stack, but found '%s' instead", k[i].Type(), v.GetKind().Type())
+func (s Stack) ExpectErr(kinds ...ValueKind) error {
+	for i, k := range kinds {
+		if i >= len(s) {
+			return fmt.Errorf("expected '%s' on the stack, but the stack is not large enough", k.Type())
+		} else if !s[i].Is(k) && k != Any {
+			return fmt.Errorf("expected '%s' on the stack, but found '%s' instead", k.Type(), s[i].GetKind().Type())
 		}
 	}
 	return nil
 }
 
-func (s Stack) Expect(k ...ValueKind) {
-	if err := s.ExpectErr(k...); err != nil {
+func (s Stack) Expect(kinds ...ValueKind) {
+	if err := s.ExpectErr(kinds...); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}

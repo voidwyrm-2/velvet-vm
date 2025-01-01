@@ -4,9 +4,9 @@
 "Velvet Scarlatina" 0 0 41
 
 # instruction section
-0 4 2 0 7 0 13 # push "Hello there.\n"
+0 4 2 0 7 0 12 # push "Hello there."
 0 3 0 0 0 0 7 # print string
 0 2 0 0 0 0 0 # end program
 
 # data section
-"println" "Hello there.\n"
+"println" "Hello there."

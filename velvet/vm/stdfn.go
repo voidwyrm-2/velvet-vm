@@ -1,8 +1,12 @@
 package vm
 
 import (
+	"bufio"
 	"fmt"
 	"math"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/voidwyrm-2/velvet-vm/velvet/vm/stack"
 )
@@ -15,7 +19,8 @@ var stdfn = map[string]func(st stack.Stack) bool{
 		return false
 	},
 
-	"eq": func(st stack.Stack) bool { // operator functions
+	// operator functions
+	"eq": func(st stack.Stack) bool {
 		st.Expect(stack.Any, stack.Any)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewBoolValue(x.Equals(y)))
@@ -108,8 +113,10 @@ var stdfn = map[string]func(st stack.Stack) bool{
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewNumberValue(float32(int(x.GetNum()) ^ int(y.GetNum()))))
 		return false
-	}, // end operator functions
+	},
+	// end operator functions
 
+	// IO functions
 	"print": func(st stack.Stack) bool {
 		st.Expect(stack.Any)
 		fmt.Print(st.Pop().GetAny())
@@ -118,6 +125,28 @@ var stdfn = map[string]func(st stack.Stack) bool{
 	"println": func(st stack.Stack) bool {
 		st.Expect(stack.Any)
 		fmt.Printf("%v\n", st.Pop().GetAny())
+		return false
+	},
+	"readNumber": func(st stack.Stack) bool {
+		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Scan()
+		if err := scanner.Err(); err != nil {
+			return true
+		}
+
+		if num, err := strconv.ParseFloat(scanner.Text(), 32); err != nil {
+			return true
+		} else {
+			st.Push(stack.NewNumberValue(float32(num)))
+		}
+
+		return false
+	},
+	// end IO functions
+
+	"strip": func(st stack.Stack) bool {
+		st.Expect(stack.String)
+		st.Push(stack.NewStringValue(strings.TrimSpace(st.Pop().GetString())))
 		return false
 	},
 }
