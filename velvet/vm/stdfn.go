@@ -117,7 +117,7 @@ var stdfn = map[string]func(st stack.Stack) bool{
 	},
 	"println": func(st stack.Stack) bool {
 		st.Expect(stack.Any)
-		fmt.Print(st.Pop().GetAny())
+		fmt.Printf("%v\n", st.Pop().GetAny())
 		return false
 	},
 }
