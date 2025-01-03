@@ -3,6 +3,7 @@ package emitter
 import (
 	"fmt"
 	"os"
+	"reflect"
 )
 
 type Opcode uint16
@@ -82,18 +83,75 @@ func (va VelvetAsm) DataString() string {
 	return string(va.data)
 }
 
-func (va *VelvetAsm) Emit(op Opcode, flag uint8, one, two uint16) {
-	va.instructions = append(va.instructions, [7]byte{byte(op >> 8), byte(op), flag, uint8(one >> 8), uint8(one), uint8(two >> 8), uint8(two)})
+func (va *VelvetAsm) AddNumber(value uint32) (uint16, uint16) {
+	addr := uint16(len(va.data))
+	va.data = append(va.data, byte(value>>24), byte((value>>16)&0xff), byte((value>>8)&0xff), byte(value))
+	return addr, 4
 }
 
-func (va *VelvetAsm) Emit32(op Opcode, flag uint8, both uint32) {
-	va.Emit(op, flag, uint16(both>>16), uint16(both))
+func (va *VelvetAsm) AddBool(value bool) (uint16, uint16) {
+	addr := uint16(len(va.data))
+	if value {
+		va.data = append(va.data, 1)
+	} else {
+		va.data = append(va.data, 0)
+	}
+	return addr, 1
 }
 
-func (va *VelvetAsm) EmitString(op Opcode, flag uint8, str string) {
-	addr, length := uint16(len(va.data)), uint16(len(str))
-	va.data = append(va.data, []byte(str)...)
-	va.Emit(op, flag, addr, length)
+func (va *VelvetAsm) AddString(value string) (uint16, uint16) {
+	addr := uint16(len(va.data))
+	va.data = append(va.data, []byte(value)...)
+	return addr, uint16(len(value))
+}
+
+func (va *VelvetAsm) AddList(values ...any) (uint16, uint16) {
+	spl16 := func(n uint16) []byte {
+		return []byte{byte(n >> 8), byte(n)}
+	}
+
+	addedBytes := []byte{}
+
+	for _, val := range values {
+		switch v := val.(type) {
+		case int:
+			{
+				valAddr, valLen := va.AddNumber(uint32(v))
+				addedBytes = append(addedBytes, 0)
+				addedBytes = append(addedBytes, spl16(valAddr)...)
+				addedBytes = append(addedBytes, spl16(valLen)...)
+			}
+		case bool:
+			{
+				valAddr, valLen := va.AddBool(v)
+				addedBytes = append(addedBytes, 1)
+				addedBytes = append(addedBytes, spl16(valAddr)...)
+				addedBytes = append(addedBytes, spl16(valLen)...)
+			}
+		case string:
+			{
+				valAddr, valLen := va.AddString(v)
+				addedBytes = append(addedBytes, 2)
+				addedBytes = append(addedBytes, spl16(valAddr)...)
+				addedBytes = append(addedBytes, spl16(valLen)...)
+			}
+		case []any:
+			{
+				valAddr, valLen := va.AddList(v)
+				addedBytes = append(addedBytes, 3)
+				addedBytes = append(addedBytes, spl16(valAddr)...)
+				addedBytes = append(addedBytes, spl16(valLen)...)
+			}
+		default:
+			panic(fmt.Sprintf("'%s' is not a valid type", reflect.TypeOf(val).Name()))
+		}
+	}
+
+	addr := uint16(len(va.data))
+
+	va.data = append(va.data, addedBytes...)
+
+	return addr, uint16(len(values))
 }
 
 func (va *VelvetAsm) CreateLabel(name string) {
@@ -109,6 +167,24 @@ func (va *VelvetAsm) GetLabel(name string) uint32 {
 	} else {
 		return addr
 	}
+}
+
+func (va *VelvetAsm) Emit(op Opcode, flag uint8, one, two uint16) {
+	va.instructions = append(va.instructions, [7]byte{byte(op >> 8), byte(op), flag, uint8(one >> 8), uint8(one), uint8(two >> 8), uint8(two)})
+}
+
+func (va *VelvetAsm) Emit32(op Opcode, flag uint8, both uint32) {
+	va.Emit(op, flag, uint16(both>>16), uint16(both))
+}
+
+func (va *VelvetAsm) EmitString(op Opcode, flag uint8, str string) {
+	addr, length := va.AddString(str)
+	va.Emit(op, flag, addr, length)
+}
+
+func (va *VelvetAsm) EmitList(op Opcode, flag uint8, values ...any) {
+	addr, length := va.AddList(values...)
+	va.Emit(op, flag, addr, length)
 }
 
 func (va *VelvetAsm) EmitNF(op Opcode, one, two uint16) {

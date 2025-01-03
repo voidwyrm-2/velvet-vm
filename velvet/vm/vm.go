@@ -48,23 +48,88 @@ func getInstruction(bytes []uint8, pc int) (uint16, struct {
 	}, args
 }
 
-func initDataGetter(bytes []uint8, dataAddr int) (func(addr, length uint16) (string, error), error) {
-	getter := func(addr, length uint16) (string, error) {
+func initDataGetter(bytes []byte, dataAddr int) (func(addr uint16, length uint) ([]byte, error), error) {
+	bytesGetter := func(addr uint16, length uint) ([]byte, error) {
 		if dataAddr+int(addr)+int(length) > len(bytes) {
-			return "", fmt.Errorf("data section address '%d' is not valid", dataAddr)
+			return []byte{}, fmt.Errorf("data section address '%d' is not valid", dataAddr)
 		}
-		return string(bytes[dataAddr+int(addr) : dataAddr+int(addr)+int(length)]), nil
+		return bytes[dataAddr+int(addr) : dataAddr+int(addr)+int(length)], nil
 	}
 
+	/*
+		stringGetter := func(addr uint16, length uint) (string, error) {
+			b, e := bytesGetter(addr, length)
+			return string(b), e
+		}
+	*/
+
 	if int(dataAddr) >= len(bytes) {
-		return getter, fmt.Errorf("data section address '%d' is not valid", dataAddr)
+		return bytesGetter, fmt.Errorf("data section address '%d' is not valid", dataAddr)
 	}
-	return getter, nil
+	return bytesGetter, nil
+}
+
+func makeListFromBytes(lb []byte, getBytes func(addr uint16, length uint) ([]byte, error)) ([]stack.StackValue, error) {
+	if len(lb) == 0 {
+		return []stack.StackValue{}, nil
+	}
+
+	itemBytes := []struct {
+		kind         uint8
+		addr, length uint16
+	}{}
+
+	for i := 0; i < len(lb); i += 5 {
+		itemBytes = append(itemBytes, struct {
+			kind   uint8
+			addr   uint16
+			length uint16
+		}{
+			kind:   lb[i],
+			addr:   (uint16(lb[i+1]) << 8) + uint16(lb[i+2]),
+			length: (uint16(lb[i+3]) << 8) + uint16(lb[i+4]),
+		})
+	}
+
+	items := []stack.StackValue{}
+
+	for _, it := range itemBytes {
+		switch it.kind {
+		case 1: // bool
+			if b, err := getBytes(it.addr, 1); err != nil {
+				return []stack.StackValue{}, err
+			} else {
+				items = append(items, stack.NewBoolValue(b[0] != 0))
+			}
+		case 2: // string
+			if str, err := getBytes(it.addr, uint(it.length)); err != nil {
+				return []stack.StackValue{}, err
+			} else {
+				items = append(items, stack.NewStringValue(string(str)))
+			}
+		case 3: // list
+			if sublsb, err := getBytes(it.addr, uint(it.length)*5); err != nil {
+				return []stack.StackValue{}, err
+			} else if subls, err := makeListFromBytes(sublsb, getBytes); err != nil {
+				return []stack.StackValue{}, err
+			} else {
+				items = append(items, stack.NewListValue(subls...))
+			}
+		default: // number
+			if b, err := getBytes(it.addr, 4); err != nil {
+				return []stack.StackValue{}, err
+			} else {
+				items = append(items, stack.NewNumberValue(float32((uint(b[0])<<24)+(uint(b[1])<<16)+(uint(b[2])<<8)+uint(b[3]))))
+			}
+		}
+	}
+
+	return items, nil
 }
 
 type VelvetVM struct {
 	stack     stack.Stack
-	callables map[string]func(stack stack.Stack) bool
+	callables map[string]func(st *stack.Stack) bool
 }
 
 func New() VelvetVM {
@@ -74,7 +139,11 @@ func New() VelvetVM {
 	}
 }
 
-func (vm VelvetVM) VerifyBytecode(bytes []uint8) (int, int, bool) {
+func (vm VelvetVM) DumpStack() string {
+	return vm.stack.Dump()
+}
+
+func (vm VelvetVM) VerifyBytecode(bytes []byte) (int, int, bool) {
 	if len(bytes) < 20 {
 		return 0, 0, false
 	} else if !strings.HasPrefix(string(bytes), "Velvet Scarlatina") {
@@ -84,7 +153,7 @@ func (vm VelvetVM) VerifyBytecode(bytes []uint8) (int, int, bool) {
 	return int(bytes[17]), (int(bytes[18]) << 8) + int(bytes[19]), true
 }
 
-func (vm VelvetVM) Run(bytes []uint8) error {
+func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction bool) error {
 	var (
 		vars     []stack.StackValue
 		dataAddr int
@@ -98,7 +167,7 @@ func (vm VelvetVM) Run(bytes []uint8) error {
 		vars, dataAddr = make([]stack.StackValue, _vars), _dataAddr
 	}
 
-	getData, err := initDataGetter(bytes, dataAddr)
+	getBytes, err := initDataGetter(bytes, dataAddr)
 	if err != nil {
 		return err
 	}
@@ -134,23 +203,31 @@ func (vm VelvetVM) Run(bytes []uint8) error {
 			os.Exit(int(args.one))
 			pc += InstructionSize
 		case 3: // call
-			if fnName, err := getData(args.one, args.two); err != nil {
+			if fnName, err := getBytes(args.one, uint(args.two)); err != nil {
 				return err
-			} else if fn, ok := vm.callables[fnName]; !ok {
-				return fmt.Errorf("function '%s' does not exist", fnName)
+			} else if fn, ok := vm.callables[string(fnName)]; !ok {
+				return fmt.Errorf("function '%s' does not exist", string(fnName))
 			} else {
-				errFlag = fn(vm.stack)
+				errFlag = fn(&vm.stack)
 			}
 			pc += InstructionSize
 		case 4: // push
 			switch fb.num {
 			case 1:
-				vm.stack.Push(stack.NewBoolValue(args.one == 1))
+				vm.stack.Push(stack.NewBoolValue(args.one != 0))
 			case 2:
-				if str, err := getData(args.one, args.two); err != nil {
+				if str, err := getBytes(args.one, uint(args.two)); err != nil {
 					return err
 				} else {
-					vm.stack.Push(stack.NewStringValue(str))
+					vm.stack.Push(stack.NewStringValue(string(str)))
+				}
+			case 3:
+				if lb, err := getBytes(args.one, uint(args.two)*5); err != nil {
+					return err
+				} else if ls, err := makeListFromBytes(lb, getBytes); err != nil {
+					return err
+				} else {
+					vm.stack.Push(stack.NewListValue(ls...))
 				}
 			default:
 				vm.stack.Push(stack.NewNumberValue(float32(args.both)))
@@ -212,6 +289,10 @@ func (vm VelvetVM) Run(bytes []uint8) error {
 			}
 		default:
 			return fmt.Errorf("invalid opcode '%d'", opcode)
+		}
+
+		if dumpStackAfterEachInstruction {
+			fmt.Println(vm.stack.Dump())
 		}
 	}
 

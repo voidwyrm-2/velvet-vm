@@ -1,5 +1,10 @@
 package stack
 
+import (
+	"fmt"
+	"strings"
+)
+
 type ValueKind uint8
 
 const (
@@ -10,7 +15,7 @@ const (
 	Any
 )
 
-func (vk ValueKind) Type() string {
+func (vk ValueKind) Name() string {
 	return []string{"Number", "String", "Bool", "List", "Any"}[vk]
 }
 
@@ -35,7 +40,15 @@ func NewStringValue(value string) StackValue {
 }
 
 func NewListValue(values ...StackValue) StackValue {
-	return StackValue{kind: String, listVal: values}
+	return StackValue{kind: List, listVal: values}
+}
+
+func (sv StackValue) Dump() string {
+	isAList := "no"
+	if sv.kind == List {
+		isAList = "yes"
+	}
+	return fmt.Sprintf("{%s, '%s', %f, %v, [is a list? %s]}", sv.kind.Name(), sv.stringVal, sv.numVal, sv.boolVal, isAList)
 }
 
 func (sv StackValue) Is(kind ValueKind) bool {
@@ -74,6 +87,23 @@ func (sv StackValue) GetAny() any {
 		return sv.GetList()
 	}
 	panic("unreachable")
+}
+
+func (sv StackValue) Format() string {
+	if sv.kind == List {
+		fi := []string{}
+
+		for _, item := range sv.GetList() {
+			if item.Is(String) {
+				fi = append(fi, "\""+item.Format()+"\"")
+			} else {
+				fi = append(fi, item.Format())
+			}
+		}
+
+		return fmt.Sprintf("[ %s ]", strings.Join(fi, " "))
+	}
+	return fmt.Sprintf("%v", sv.GetAny())
 }
 
 func (sv StackValue) Equals(other StackValue) bool {

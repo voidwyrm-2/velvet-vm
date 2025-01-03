@@ -11,104 +11,104 @@ import (
 	"github.com/voidwyrm-2/velvet-vm/velvet/vm/stack"
 )
 
-var stdfn = map[string]func(st stack.Stack) bool{
-	"error": func(st stack.Stack) bool {
+var stdfn = map[string]func(st *stack.Stack) bool{
+	"error": func(st *stack.Stack) bool {
 		return false
 	},
-	"reset": func(st stack.Stack) bool {
+	"reset": func(st *stack.Stack) bool {
 		return false
 	},
 
 	// operator functions
-	"eq": func(st stack.Stack) bool {
+	"eq": func(st *stack.Stack) bool {
 		st.Expect(stack.Any, stack.Any)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewBoolValue(x.Equals(y)))
 		return false
 	},
-	"neq": func(st stack.Stack) bool {
+	"neq": func(st *stack.Stack) bool {
 		st.Expect(stack.Any, stack.Any)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewBoolValue(!x.Equals(y)))
 		return false
 	},
-	"not": func(st stack.Stack) bool {
+	"not": func(st *stack.Stack) bool {
 		st.Expect(stack.Bool)
 		st.Push(stack.NewBoolValue(!st.Pop().GetBool()))
 		return false
 	},
-	"lt": func(st stack.Stack) bool {
+	"lt": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewBoolValue(x.GetNum() < y.GetNum()))
 		return false
 	},
-	"gt": func(st stack.Stack) bool {
+	"gt": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewBoolValue(x.GetNum() > y.GetNum()))
 		return false
 	},
-	"lte": func(st stack.Stack) bool {
+	"lte": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewBoolValue(x.GetNum() <= y.GetNum()))
 		return false
 	},
-	"gte": func(st stack.Stack) bool {
+	"gte": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewBoolValue(x.GetNum() >= y.GetNum()))
 		return false
 	},
-	"add": func(st stack.Stack) bool {
+	"add": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewNumberValue(x.GetNum() + y.GetNum()))
 		return false
 	},
-	"sub": func(st stack.Stack) bool {
+	"sub": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewNumberValue(x.GetNum() - y.GetNum()))
 		return false
 	},
-	"mul": func(st stack.Stack) bool {
+	"mul": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewNumberValue(x.GetNum() * y.GetNum()))
 		return false
 	},
-	"div": func(st stack.Stack) bool {
+	"div": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewNumberValue(x.GetNum() / y.GetNum()))
 		return false
 	},
-	"pow": func(st stack.Stack) bool {
+	"pow": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewNumberValue(float32(math.Pow(float64(x.GetNum()), float64(y.GetNum())))))
 		return false
 	},
-	"log": func(st stack.Stack) bool {
+	"log": func(st *stack.Stack) bool {
 		st.Expect(stack.Number)
 		st.Push(stack.NewNumberValue(float32(math.Log(float64(st.Pop().GetNum())))))
 		return false
 	},
-	"and": func(st stack.Stack) bool {
+	"and": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewNumberValue(float32(int(x.GetNum()) & int(y.GetNum()))))
 		return false
 	},
-	"or": func(st stack.Stack) bool {
+	"or": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewNumberValue(float32(int(x.GetNum()) | int(y.GetNum()))))
 		return false
 	},
-	"xor": func(st stack.Stack) bool {
+	"xor": func(st *stack.Stack) bool {
 		st.Expect(stack.Number, stack.Number)
 		y, x := st.Pop(), st.Pop()
 		st.Push(stack.NewNumberValue(float32(int(x.GetNum()) ^ int(y.GetNum()))))
@@ -117,17 +117,17 @@ var stdfn = map[string]func(st stack.Stack) bool{
 	// end operator functions
 
 	// IO functions
-	"print": func(st stack.Stack) bool {
+	"print": func(st *stack.Stack) bool {
 		st.Expect(stack.Any)
-		fmt.Print(st.Pop().GetAny())
+		fmt.Print(st.Pop().Format())
 		return false
 	},
-	"println": func(st stack.Stack) bool {
+	"println": func(st *stack.Stack) bool {
 		st.Expect(stack.Any)
-		fmt.Printf("%v\n", st.Pop().GetAny())
+		fmt.Printf("%v\n", st.Pop().Format())
 		return false
 	},
-	"readNumber": func(st stack.Stack) bool {
+	"readNumber": func(st *stack.Stack) bool {
 		scanner := bufio.NewScanner(os.Stdin)
 		scanner.Scan()
 		if err := scanner.Err(); err != nil {
@@ -142,9 +142,10 @@ var stdfn = map[string]func(st stack.Stack) bool{
 
 		return false
 	},
+
 	// end IO functions
 
-	"strip": func(st stack.Stack) bool {
+	"strip": func(st *stack.Stack) bool {
 		st.Expect(stack.String)
 		st.Push(stack.NewStringValue(strings.TrimSpace(st.Pop().GetString())))
 		return false

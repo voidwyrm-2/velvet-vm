@@ -27,7 +27,12 @@ The third and fourth sections of two bytes are either read separately or togethe
 
 ## Data
 
-The Data section contains the strings and function names used in the program, arrayed back-to-back
+The Data section contains certain static data values and function names used in the program, arrayed back-to-back
 
-How the Data section is used is that each string and function name used in the program is stored in this section, then instructions that use this section (`push` and `call` at the time of writing)
-have an address and a string length in place of arguments, which are then used to get the string from the data section
+How the Data section is used is that instructions that use this section (`push` and `call` at the time of writing)
+have an address and a data length in place of arguments, which are then used to get the value from the data section
+
+### Data Formating
+
+* Strings are just sequences of bytes; they are **not** null-terminated
+* Lists are sequences of items composed of 5 bytes each; one for type, two for address, two for length; lists can strings, numbers, booleans, or other lists

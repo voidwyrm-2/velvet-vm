@@ -3,12 +3,23 @@ package stack
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 type Stack []StackValue
 
 func New() Stack {
 	return Stack([]StackValue{})
+}
+
+func (s Stack) Dump() string {
+	dumped := []string{}
+
+	for _, item := range s {
+		dumped = append(dumped, item.Dump())
+	}
+
+	return "[\n" + strings.Join(dumped, "\n") + "\n]"
 }
 
 func (s *Stack) Push(v StackValue) {
@@ -33,12 +44,18 @@ func (s *Stack) TryPop() (StackValue, bool) {
 }
 
 func (s Stack) ExpectErr(kinds ...ValueKind) error {
-	for i, k := range kinds {
-		if i >= len(s) {
-			return fmt.Errorf("expected '%s' on the stack, but the stack is not large enough", k.Type())
-		} else if !s[i].Is(k) && k != Any {
-			return fmt.Errorf("expected '%s' on the stack, but found '%s' instead", k.Type(), s[i].GetKind().Type())
+	if len(kinds) > len(s) {
+		return fmt.Errorf("expected '%s' on the stack, but the stack is not large enough", kinds[len(kinds)-1].Name())
+	}
+
+	ki, si := 0, len(s)-1
+
+	for ki < len(kinds) {
+		if !s[si].Is(kinds[ki]) && kinds[ki] != Any {
+			return fmt.Errorf("expected '%s' on the stack, but found '%s' instead", kinds[ki].Name(), s[si].GetKind().Name())
 		}
+		ki += 1
+		si -= 1
 	}
 	return nil
 }

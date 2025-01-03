@@ -11,7 +11,8 @@
     **Flags**<br>
     default: Treats the instruction arguments as a number
     1. Treats the instruction arguments as a bool
-    2. Treats the instruction arguments as an address and length
+    2. Treats the instruction arguments as an address and length for a string
+    3. Treats the instruction arguments as an address and length for a list
 5. pop
 6. dup
 7. swap

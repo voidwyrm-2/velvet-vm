@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -19,20 +20,28 @@ func readFile(fileName string) ([]uint8, error) {
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	dumpStackAfterEachInstruction := flag.Bool("show", false, "Dump the stack after each instruction")
+	dumpAtEnd := flag.Bool("dump", false, "Dump the stack at the end of the program")
+
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) == 0 {
 		fmt.Println("expected 'velvet <file>'")
 		return
 	}
 
-	content, err := readFile(os.Args[1])
+	content, err := readFile(args[0])
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 
 	virmac := vm.New()
-	if err = virmac.Run(content); err != nil {
+	if err = virmac.Run(content, *dumpStackAfterEachInstruction); err != nil {
 		fmt.Println(err.Error())
 		return
+	} else if *dumpAtEnd && !*dumpStackAfterEachInstruction {
+		fmt.Println(virmac.DumpStack())
 	}
 }
