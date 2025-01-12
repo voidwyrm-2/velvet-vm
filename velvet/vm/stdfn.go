@@ -145,9 +145,23 @@ var stdfn = map[string]func(st *stack.Stack) bool{
 
 	// end IO functions
 
+	// string functions
 	"strip": func(st *stack.Stack) bool {
 		st.Expect(stack.String)
 		st.Push(stack.NewStringValue(strings.TrimSpace(st.Pop().GetString())))
 		return false
 	},
+	"split": func(st *stack.Stack) bool {
+		st.Expect(stack.String, stack.String)
+
+		y, x := st.Pop().GetString(), st.Pop().GetString()
+		l := []stack.StackValue{}
+		for _, v := range strings.Split(x, y) {
+			l = append(l, stack.NewStringValue(v))
+		}
+
+		st.Push(stack.NewListValue(l...))
+		return false
+	},
+	// end string functions
 }

@@ -8,9 +8,12 @@ import std.io;
 std::core::set_endian(std::mem::Endian::Big); // Velvet bytecode uses big endian for all of it's numbers
 
 struct InfoSection { // contains information about the file and program
-    char signature[17] [[color("803D2F")]]; // signature 
-    u8 vars [[color("00FF00")]]; // the amount of variables the program uses
-    u16 dataAddress [[color("0000FF")]]; // the byte address of the Data Section
+    char signature[17] [[color("803D2F")]]; // signature
+    u8 programFlags [[color("AAFF00")]];
+    u16 vars [[color("00FF00")]]; // the amount of variables the program uses
+    u32 dataAddress [[color("0000FF")]]; // the byte address of the Data Section
+    u32 programEntry [[color("00AAFF")]];
+    u32 reserved [[color("000000")]];
 };
 
 InfoSection info @ 0;
@@ -76,4 +79,4 @@ struct VEX { // VevletVM Executable
     u8 data[while(!std::mem::eof())] [[color("5FCDE4")]]; // contains various static data
 };
 
-VEX vex @ 20;
+VEX vex @ 32;

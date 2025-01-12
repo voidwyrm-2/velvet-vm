@@ -119,7 +119,7 @@ func makeListFromBytes(lb []byte, getBytes func(addr uint16, length uint) ([]byt
 			if b, err := getBytes(it.addr, 4); err != nil {
 				return []stack.StackValue{}, err
 			} else {
-				items = append(items, stack.NewNumberValue(float32((uint(b[0])<<24)+(uint(b[1])<<16)+(uint(b[2])<<8)+uint(b[3]))))
+				items = append(items, stack.NewNumberValue(float32(int((uint(b[0])<<24)+(uint(b[1])<<16)+(uint(b[2])<<8)+uint(b[3])))))
 			}
 		}
 	}
@@ -143,28 +143,65 @@ func (vm VelvetVM) DumpStack() string {
 	return vm.stack.Dump()
 }
 
-func (vm VelvetVM) VerifyBytecode(bytes []byte) (int, int, bool) {
-	if len(bytes) < 20 {
-		return 0, 0, false
+func (vm VelvetVM) VerifyBytecode(bytes []byte) (struct {
+	isLibrary, f2, f3, f4, f5, f6, f7, f8 bool
+}, int, int, int, bool,
+) {
+	if len(bytes) < 32 {
+		return struct {
+			isLibrary bool
+			f2        bool
+			f3        bool
+			f4        bool
+			f5        bool
+			f6        bool
+			f7        bool
+			f8        bool
+		}{}, 0, 0, 0, false
 	} else if !strings.HasPrefix(string(bytes), "Velvet Scarlatina") {
-		return 0, 0, false
+		return struct {
+			isLibrary bool
+			f2        bool
+			f3        bool
+			f4        bool
+			f5        bool
+			f6        bool
+			f7        bool
+			f8        bool
+		}{}, 0, 0, 0, false
 	}
 
-	return int(bytes[17]), (int(bytes[18]) << 8) + int(bytes[19]), true
+	return struct {
+		isLibrary bool
+		f2        bool
+		f3        bool
+		f4        bool
+		f5        bool
+		f6        bool
+		f7        bool
+		f8        bool
+	}{isLibrary: (bytes[17] >> 7) == 1}, int(bytes[18]<<8) + int(bytes[19]), (int(bytes[20]) << 24) + (int(bytes[21]) << 16) + (int(bytes[22]) << 8) + int(bytes[23]), (int(bytes[24]) << 24) + (int(bytes[25]) << 16) + (int(bytes[26]) << 8) + int(bytes[27]), true
 }
 
 func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction bool) error {
 	var (
-		vars     []stack.StackValue
-		dataAddr int
-		errFlag  bool
-		// errReg   string // might be used to hold the error message from functions that errored out
+		flags struct {
+			isLibrary, f2, f3, f4, f5, f6, f7, f8 bool
+		}
+		vars                  []stack.StackValue
+		dataAddr, entryOffset int
+		errFlag               bool
+		// errReg   string // might be used in the future to hold the error message from functions that errored out
 	)
 
-	if _vars, _dataAddr, ok := vm.VerifyBytecode(bytes); !ok {
+	if _flags, _vars, _dataAddr, _entryOffset, ok := vm.VerifyBytecode(bytes); !ok {
 		return errors.New("malformed bytecode format")
 	} else {
-		vars, dataAddr = make([]stack.StackValue, _vars), _dataAddr
+		flags, vars, dataAddr, entryOffset = _flags, make([]stack.StackValue, _vars), _dataAddr, _entryOffset
+	}
+
+	if entryOffset > dataAddr {
+		return fmt.Errorf("the start of execution is inside the data section")
 	}
 
 	getBytes, err := initDataGetter(bytes, dataAddr)
@@ -172,21 +209,19 @@ func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction bool) error {
 		return err
 	}
 
-	_ = vars
-	_ = dataAddr
-	_ = errFlag
+	if flags.isLibrary {
+		return errors.New("this Velvet bytecode executable has been declared as a library meaning it cannot be directly run, it must be imported by a non-library Velvet executable")
+	}
 
 	callstack := []int{}
 
-	pc := 20
+	pc := 32 + (entryOffset * 7)
 	for {
 		if pc+7 >= len(bytes) {
 			return errors.New("end of bytes reached")
 		}
 
 		opcode, fb, args := getInstruction(bytes, pc)
-
-		_ = fb
 
 		switch opcode {
 		case 0: // nop
@@ -230,7 +265,7 @@ func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction bool) error {
 					vm.stack.Push(stack.NewListValue(ls...))
 				}
 			default:
-				vm.stack.Push(stack.NewNumberValue(float32(args.both)))
+				vm.stack.Push(stack.NewNumberValue(float32(int(args.both))))
 			}
 			pc += InstructionSize
 		case 5: // pop

@@ -1,0 +1,38 @@
+@vars 1
+
+// Fibonacci with only one variable
+
+.numloop
+  push "please input a number: "
+  call print
+  call readNumber
+  je numloop
+
+set 0
+
+push 0 // a
+push 1 // b
+
+.fibloop
+  // a, b = b, a + b
+  swap // a b -> b a
+  dup // b a -> b a a
+  call println // b a a -> b a
+  swap // b a -> a b
+  dup // a b -> a b b
+  rot // a b b -> b b a
+  add // b b a -> b b+a
+  swap // b b+a -> b+a b
+
+  // decrement loop var
+  get 0
+  push 1
+  sub
+  dup
+  set 0
+
+  push 0
+  gt
+  jt fibloop
+
+halt 0

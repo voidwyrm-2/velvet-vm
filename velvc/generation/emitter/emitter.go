@@ -49,23 +49,45 @@ func writeFile(filename string, data []byte) error {
 	return err
 }
 
+func boolToUint8(b bool) uint8 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 type VelvetAsm struct {
-	vars         uint8
+	vars  uint16
+	flags struct {
+		isLibrary, f2, f3, f4, f5, f6, f7, f8 bool
+	}
+	programEntry uint32
 	instructions [][7]byte
 	labels       map[string]uint32
 	data         []byte
 }
 
-func New(vars uint8) VelvetAsm {
+func New(vars uint16) VelvetAsm {
 	return VelvetAsm{vars: vars, instructions: [][7]byte{}, labels: map[string]uint32{}, data: []byte{}}
+}
+
+func (va VelvetAsm) flagsToUint8() uint8 {
+	return (boolToUint8(va.flags.isLibrary) << 7) + (boolToUint8(va.flags.f2) << 6) + (boolToUint8(va.flags.f3) << 5) + (boolToUint8(va.flags.f4) << 4) + (boolToUint8(va.flags.f5) << 3) + (boolToUint8(va.flags.f6) << 2) + (boolToUint8(va.flags.f7) << 1) + boolToUint8(va.flags.f8)
 }
 
 func (va VelvetAsm) Write(filename string) error {
 	output := []byte("Velvet Scarlatina")
-	output = append(output, va.vars)
 
-	dataAddr := uint16(20 + len(va.instructions)*7)
-	output = append(output, uint8(dataAddr>>8), uint8(dataAddr))
+	output = append(output, va.flagsToUint8())
+
+	output = append(output, uint8(va.vars>>8), uint8(va.vars))
+
+	dataAddr := uint32(32 + len(va.instructions)*7)
+	output = append(output, uint8(dataAddr>>24), uint8(dataAddr>>16), uint8(dataAddr>>8), uint8(dataAddr))
+
+	output = append(output, uint8(va.programEntry>>24), uint8(va.programEntry>>16), uint8(va.programEntry>>8), uint8(va.programEntry))
+
+	output = append(output, 0, 0, 0, 0)
 
 	for _, ins := range va.instructions {
 		output = append(output, ins[0:]...)
@@ -205,4 +227,8 @@ func (va *VelvetAsm) EmitBasic(op Opcode) {
 
 func (va *VelvetAsm) Halt(code int8) {
 	va.Emit(Halt, 0, uint16(code), 0)
+}
+
+func (va *VelvetAsm) SetEntry(entryOffset uint32) {
+	va.programEntry = entryOffset
 }
