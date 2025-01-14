@@ -64,11 +64,12 @@ type VelvetAsm struct {
 	programEntry uint32
 	instructions [][7]byte
 	labels       map[string]uint32
+	staticCache  map[any][2]uint16
 	data         []byte
 }
 
 func New(vars uint16) VelvetAsm {
-	return VelvetAsm{vars: vars, instructions: [][7]byte{}, labels: map[string]uint32{}, data: []byte{}}
+	return VelvetAsm{vars: vars, instructions: [][7]byte{}, labels: map[string]uint32{}, staticCache: map[any][2]uint16{}, data: []byte{}}
 }
 
 func (va VelvetAsm) flagsToUint8() uint8 {
@@ -106,28 +107,54 @@ func (va VelvetAsm) DataString() string {
 }
 
 func (va *VelvetAsm) AddNumber(value uint32) (uint16, uint16) {
+	if pos, ok := va.staticCache[value]; ok {
+		return pos[0], pos[1]
+	}
 	addr := uint16(len(va.data))
 	va.data = append(va.data, byte(value>>24), byte((value>>16)&0xff), byte((value>>8)&0xff), byte(value))
+	va.staticCache[value] = [2]uint16{addr, 4}
 	return addr, 4
 }
 
 func (va *VelvetAsm) AddBool(value bool) (uint16, uint16) {
+	if pos, ok := va.staticCache[value]; ok {
+		return pos[0], pos[1]
+	}
+
 	addr := uint16(len(va.data))
 	if value {
 		va.data = append(va.data, 1)
 	} else {
 		va.data = append(va.data, 0)
 	}
+
+	va.staticCache[value] = [2]uint16{addr, 1}
 	return addr, 1
 }
 
 func (va *VelvetAsm) AddString(value string) (uint16, uint16) {
+	// fmt.Println(value, va.staticCache)
+	// fmt.Println(va.DataString())
+	if pos, ok := va.staticCache[value]; ok {
+		// fmt.Println("cache hit with: " + value)
+		return pos[0], pos[1]
+	}
+
+	//	fmt.Println("cache miss with: " + value)
+
 	addr := uint16(len(va.data))
 	va.data = append(va.data, []byte(value)...)
+
+	va.staticCache[value] = [2]uint16{addr, uint16(len(value))}
 	return addr, uint16(len(value))
 }
 
 func (va *VelvetAsm) AddList(values ...any) (uint16, uint16) {
+	// fmt.Println(fmt.Sprintf("%v", values))
+	if pos, ok := va.staticCache[fmt.Sprintf("%v", values)]; ok {
+		return pos[0], pos[1]
+	}
+
 	spl16 := func(n uint16) []byte {
 		return []byte{byte(n >> 8), byte(n)}
 	}
@@ -139,28 +166,28 @@ func (va *VelvetAsm) AddList(values ...any) (uint16, uint16) {
 		case int:
 			{
 				valAddr, valLen := va.AddNumber(uint32(v))
-				addedBytes = append(addedBytes, 0)
-				addedBytes = append(addedBytes, spl16(valAddr)...)
-				addedBytes = append(addedBytes, spl16(valLen)...)
-			}
-		case bool:
-			{
-				valAddr, valLen := va.AddBool(v)
-				addedBytes = append(addedBytes, 1)
+				addedBytes = append(addedBytes, 0b0)
 				addedBytes = append(addedBytes, spl16(valAddr)...)
 				addedBytes = append(addedBytes, spl16(valLen)...)
 			}
 		case string:
 			{
 				valAddr, valLen := va.AddString(v)
-				addedBytes = append(addedBytes, 2)
+				addedBytes = append(addedBytes, 0b1)
+				addedBytes = append(addedBytes, spl16(valAddr)...)
+				addedBytes = append(addedBytes, spl16(valLen)...)
+			}
+		case bool:
+			{
+				valAddr, valLen := va.AddBool(v)
+				addedBytes = append(addedBytes, 0b10)
 				addedBytes = append(addedBytes, spl16(valAddr)...)
 				addedBytes = append(addedBytes, spl16(valLen)...)
 			}
 		case []any:
 			{
 				valAddr, valLen := va.AddList(v)
-				addedBytes = append(addedBytes, 3)
+				addedBytes = append(addedBytes, 0b100)
 				addedBytes = append(addedBytes, spl16(valAddr)...)
 				addedBytes = append(addedBytes, spl16(valLen)...)
 			}
@@ -172,6 +199,8 @@ func (va *VelvetAsm) AddList(values ...any) (uint16, uint16) {
 	addr := uint16(len(va.data))
 
 	va.data = append(va.data, addedBytes...)
+
+	va.staticCache[fmt.Sprintf("%v", values)] = [2]uint16{addr, uint16(len(values))}
 
 	return addr, uint16(len(values))
 }

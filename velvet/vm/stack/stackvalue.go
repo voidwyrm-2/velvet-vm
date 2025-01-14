@@ -5,18 +5,19 @@ import (
 	"strings"
 )
 
-type ValueKind uint8
+type ValueKind int16
 
 const (
-	Number ValueKind = iota
-	String
-	Bool
-	List
-	Any
+	Any                = -1
+	Number   ValueKind = 0b0
+	String             = 0b1
+	Bool               = 0b10
+	List               = 0b100
+	Function           = 0b1000
 )
 
 func (vk ValueKind) Name() string {
-	return []string{"Number", "String", "Bool", "List", "Any"}[vk]
+	return map[ValueKind]string{Any: "Any", Number: "Number", String: "String", Bool: "Bool", List: "List", Function: "Function"}[vk]
 }
 
 type StackValue struct {
@@ -24,6 +25,7 @@ type StackValue struct {
 	stringVal string
 	listVal   []StackValue
 	boolVal   bool
+	funcVal   func(st *Stack) bool
 	kind      ValueKind
 }
 
@@ -43,16 +45,20 @@ func NewListValue(values ...StackValue) StackValue {
 	return StackValue{kind: List, listVal: values}
 }
 
+func AllocListValue(size int) StackValue {
+	return StackValue{kind: List, listVal: make([]StackValue, size)}
+}
+
+func NewFuncValue(value func(st *Stack) bool) StackValue {
+	return StackValue{kind: Function, funcVal: value}
+}
+
 func (sv StackValue) Dump() string {
-	isAList := "no"
-	if sv.kind == List {
-		isAList = "yes"
-	}
-	return fmt.Sprintf("{%s, '%s', %f, %v, [is a list? %s]}", sv.kind.Name(), sv.stringVal, sv.numVal, sv.boolVal, isAList)
+	return fmt.Sprintf("{%s, '%s', %f, %v}", sv.kind.Name(), sv.stringVal, sv.numVal, sv.boolVal)
 }
 
 func (sv StackValue) Is(kind ValueKind) bool {
-	return sv.kind == kind
+	return sv.kind&kind == sv.kind || Any&kind == Any
 }
 
 func (sv StackValue) GetKind() ValueKind {
@@ -75,6 +81,10 @@ func (sv StackValue) GetList() []StackValue {
 	return sv.listVal
 }
 
+func (sv StackValue) GetFunc() func(st *Stack) bool {
+	return sv.funcVal
+}
+
 func (sv StackValue) GetAny() any {
 	switch sv.kind {
 	case Number:
@@ -85,12 +95,16 @@ func (sv StackValue) GetAny() any {
 		return sv.GetBool()
 	case List:
 		return sv.GetList()
+	case Function:
+		return sv.GetFunc()
 	}
 	panic("unreachable")
 }
 
 func (sv StackValue) Format() string {
-	if sv.kind == List {
+	if sv.kind == Function {
+		return "<Function>"
+	} else if sv.kind == List {
 		fi := []string{}
 
 		for _, item := range sv.GetList() {

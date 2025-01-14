@@ -28,8 +28,8 @@ var version string
 func main() {
 	version = strings.TrimSpace(version)
 
-	dumpStackAfterEachInstruction := flag.Bool("show", false, "Dump the stack after each instruction")
-	dumpAtEnd := flag.Bool("dump", false, "Dump the stack at the end of the program")
+	dumpStackAfterEachInstruction := flag.Bool("show", false, "Print the stack after each instruction")
+	dumpAtEnd := flag.Bool("show-end", false, "Dump the stack at the end of the program")
 	showVersion := flag.Bool("v", false, "Show the current Velvet version")
 
 	flag.Parse()

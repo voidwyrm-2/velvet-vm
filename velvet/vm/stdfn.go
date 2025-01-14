@@ -127,6 +127,20 @@ var stdfn = map[string]func(st *stack.Stack) bool{
 		fmt.Printf("%v\n", st.Pop().Format())
 		return false
 	},
+	"putc": func(st *stack.Stack) bool {
+		st.Expect(stack.Number)
+
+		fmt.Print(string(rune(int(st.Pop().GetNum()))))
+
+		return false
+	},
+	"putcln": func(st *stack.Stack) bool {
+		st.Expect(stack.Number)
+
+		fmt.Println(string(rune(int(st.Pop().GetNum()))))
+
+		return false
+	},
 	"readNumber": func(st *stack.Stack) bool {
 		scanner := bufio.NewScanner(os.Stdin)
 		scanner.Scan()
@@ -145,7 +159,7 @@ var stdfn = map[string]func(st *stack.Stack) bool{
 
 	// end IO functions
 
-	// string functions
+	// string operations
 	"strip": func(st *stack.Stack) bool {
 		st.Expect(stack.String)
 		st.Push(stack.NewStringValue(strings.TrimSpace(st.Pop().GetString())))
@@ -163,5 +177,35 @@ var stdfn = map[string]func(st *stack.Stack) bool{
 		st.Push(stack.NewListValue(l...))
 		return false
 	},
-	// end string functions
+	// end string operations
+
+	// seqence operations
+	"allocList": func(st *stack.Stack) bool {
+		st.Expect(stack.Number)
+		st.Push(stack.AllocListValue(int(st.Pop().GetNum())))
+		return false
+	},
+	"len": func(st *stack.Stack) bool {
+		st.Expect(stack.List | stack.String)
+
+		if seq := st.Pop(); seq.Is(stack.String) {
+			st.Push(stack.NewNumberValue(float32(len(seq.GetString()))))
+		} else {
+			st.Push(stack.NewNumberValue(float32(len(seq.GetList()))))
+		}
+
+		return false
+	},
+	"index": func(st *stack.Stack) bool {
+		st.Expect(stack.List|stack.String, stack.Number)
+
+		if i, seq := st.Pop(), st.Pop(); seq.Is(stack.String) {
+			st.Push(stack.NewNumberValue(float32(seq.GetString()[int(i.GetNum())])))
+		} else {
+			st.Push(seq.GetList()[int(i.GetNum())])
+		}
+
+		return false
+	},
+	// end seqence operations
 }

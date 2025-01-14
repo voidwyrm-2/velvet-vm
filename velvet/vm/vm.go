@@ -95,19 +95,19 @@ func makeListFromBytes(lb []byte, getBytes func(addr uint16, length uint) ([]byt
 
 	for _, it := range itemBytes {
 		switch it.kind {
-		case 1: // bool
-			if b, err := getBytes(it.addr, 1); err != nil {
-				return []stack.StackValue{}, err
-			} else {
-				items = append(items, stack.NewBoolValue(b[0] != 0))
-			}
-		case 2: // string
+		case stack.String: // string
 			if str, err := getBytes(it.addr, uint(it.length)); err != nil {
 				return []stack.StackValue{}, err
 			} else {
 				items = append(items, stack.NewStringValue(string(str)))
 			}
-		case 3: // list
+		case stack.Bool: // bool
+			if b, err := getBytes(it.addr, 1); err != nil {
+				return []stack.StackValue{}, err
+			} else {
+				items = append(items, stack.NewBoolValue(b[0] == 1))
+			}
+		case stack.List: // list
 			if sublsb, err := getBytes(it.addr, uint(it.length)*5); err != nil {
 				return []stack.StackValue{}, err
 			} else if subls, err := makeListFromBytes(sublsb, getBytes); err != nil {
@@ -115,6 +115,14 @@ func makeListFromBytes(lb []byte, getBytes func(addr uint16, length uint) ([]byt
 			} else {
 				items = append(items, stack.NewListValue(subls...))
 			}
+		/*case stack.Function:
+		if fnName, err := getBytes(args.one, uint(args.two)); err != nil {
+			return []stack.StackValue, err
+		} else if fn, ok := vm.callables[string(fnName)]; !ok {
+			return []stack.StackValue,fmt.Errorf("function '%s' does not exist", string(fnName))
+		} else {
+			vm.stack.Push(stack.NewFuncValue(fn))
+		}*/
 		default: // number
 			if b, err := getBytes(it.addr, 4); err != nil {
 				return []stack.StackValue{}, err
@@ -180,7 +188,7 @@ func (vm VelvetVM) VerifyBytecode(bytes []byte) (struct {
 		f6        bool
 		f7        bool
 		f8        bool
-	}{isLibrary: (bytes[17] >> 7) == 1}, int(bytes[18]<<8) + int(bytes[19]), (int(bytes[20]) << 24) + (int(bytes[21]) << 16) + (int(bytes[22]) << 8) + int(bytes[23]), (int(bytes[24]) << 24) + (int(bytes[25]) << 16) + (int(bytes[26]) << 8) + int(bytes[27]), true
+	}{isLibrary: (bytes[17] >> 7) == 1}, (int(bytes[18]) << 8) + int(bytes[19]), (int(bytes[20]) << 24) + (int(bytes[21]) << 16) + (int(bytes[22]) << 8) + int(bytes[23]), (int(bytes[24]) << 24) + (int(bytes[25]) << 16) + (int(bytes[26]) << 8) + int(bytes[27]), true
 }
 
 func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction bool) error {
@@ -238,31 +246,44 @@ func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction bool) error {
 			os.Exit(int(args.one))
 			pc += InstructionSize
 		case 3: // call
-			if fnName, err := getBytes(args.one, uint(args.two)); err != nil {
-				return err
-			} else if fn, ok := vm.callables[string(fnName)]; !ok {
-				return fmt.Errorf("function '%s' does not exist", string(fnName))
+			if fb.flags[0] {
+				vm.stack.Expect(stack.Function)
+				errFlag = vm.stack.Pop().GetFunc()(&vm.stack)
 			} else {
-				errFlag = fn(&vm.stack)
+				if fnName, err := getBytes(args.one, uint(args.two)); err != nil {
+					return err
+				} else if fn, ok := vm.callables[string(fnName)]; !ok {
+					return fmt.Errorf("function '%s' does not exist", string(fnName))
+				} else {
+					errFlag = fn(&vm.stack)
+				}
 			}
 			pc += InstructionSize
 		case 4: // push
 			switch fb.num {
-			case 1:
+			case 1: // bool
 				vm.stack.Push(stack.NewBoolValue(args.one != 0))
-			case 2:
+			case 2: // string
 				if str, err := getBytes(args.one, uint(args.two)); err != nil {
 					return err
 				} else {
 					vm.stack.Push(stack.NewStringValue(string(str)))
 				}
-			case 3:
+			case 3: // list
 				if lb, err := getBytes(args.one, uint(args.two)*5); err != nil {
 					return err
 				} else if ls, err := makeListFromBytes(lb, getBytes); err != nil {
 					return err
 				} else {
 					vm.stack.Push(stack.NewListValue(ls...))
+				}
+			case 4: // function
+				if fnName, err := getBytes(args.one, uint(args.two)); err != nil {
+					return err
+				} else if fn, ok := vm.callables[string(fnName)]; !ok {
+					return fmt.Errorf("function '%s' does not exist", string(fnName))
+				} else {
+					vm.stack.Push(stack.NewFuncValue(fn))
 				}
 			default:
 				vm.stack.Push(stack.NewNumberValue(float32(int(args.both))))

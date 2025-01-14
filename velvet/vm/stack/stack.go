@@ -51,7 +51,7 @@ func (s Stack) ExpectErr(kinds ...ValueKind) error {
 	ki, si := 0, len(s)-1
 
 	for ki < len(kinds) {
-		if !s[si].Is(kinds[ki]) && kinds[ki] != Any {
+		if !s[si].Is(kinds[ki]) && kinds[ki] == Any {
 			return fmt.Errorf("expected '%s' on the stack, but found '%s' instead", kinds[ki].Name(), s[si].GetKind().Name())
 		}
 		ki += 1
