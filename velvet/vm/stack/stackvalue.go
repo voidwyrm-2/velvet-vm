@@ -49,6 +49,14 @@ func AllocListValue(size int) StackValue {
 	return StackValue{kind: List, listVal: make([]StackValue, size)}
 }
 
+func AllocInitListValue(size int, value StackValue) StackValue {
+	l := AllocListValue(size)
+	for range size {
+		l.listVal = append(l.listVal, value)
+	}
+	return l
+}
+
 func NewFuncValue(value func(st *Stack) bool) StackValue {
 	return StackValue{kind: Function, funcVal: value}
 }

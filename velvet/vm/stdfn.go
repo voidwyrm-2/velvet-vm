@@ -185,6 +185,12 @@ var stdfn = map[string]func(st *stack.Stack) bool{
 		st.Push(stack.AllocListValue(int(st.Pop().GetNum())))
 		return false
 	},
+	"allocInitList": func(st *stack.Stack) bool {
+		st.Expect(stack.Number, stack.Any)
+		y, x := st.Pop(), int(st.Pop().GetNum())
+		st.Push(stack.AllocInitListValue(x, y))
+		return false
+	},
 	"len": func(st *stack.Stack) bool {
 		st.Expect(stack.List | stack.String)
 

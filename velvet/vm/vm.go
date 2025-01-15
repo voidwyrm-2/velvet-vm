@@ -191,7 +191,7 @@ func (vm VelvetVM) VerifyBytecode(bytes []byte) (struct {
 	}{isLibrary: (bytes[17] >> 7) == 1}, (int(bytes[18]) << 8) + int(bytes[19]), (int(bytes[20]) << 24) + (int(bytes[21]) << 16) + (int(bytes[22]) << 8) + int(bytes[23]), (int(bytes[24]) << 24) + (int(bytes[25]) << 16) + (int(bytes[26]) << 8) + int(bytes[27]), true
 }
 
-func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction bool) error {
+func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction, dumpVarsAfterEachInstruction bool) error {
 	var (
 		flags struct {
 			isLibrary, f2, f3, f4, f5, f6, f7, f8 bool
@@ -315,7 +315,7 @@ func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction bool) error {
 		case 9: // set/get
 			if int(args.one) >= len(vars) {
 				return fmt.Errorf("%d is not a valid variable index", args.one)
-			} else if fb.flags[7] {
+			} else if fb.num&1 == 1 {
 				vm.stack.Push(vars[int(args.one)])
 			} else {
 				vm.stack.Expect(stack.Any)
@@ -349,6 +349,17 @@ func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction bool) error {
 
 		if dumpStackAfterEachInstruction {
 			fmt.Println(vm.stack.Dump())
+		}
+
+		if dumpVarsAfterEachInstruction {
+			if dumpStackAfterEachInstruction {
+				fmt.Println("")
+			}
+
+			fmtVars := []string{}
+			for _, v := range vars {
+				fmtVars = append(fmtVars, v.Dump())
+			}
 		}
 	}
 

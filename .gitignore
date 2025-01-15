@@ -10,3 +10,5 @@ bin/
 obj/
 .zig-cache
 .zig-out
+
+*.cvelv

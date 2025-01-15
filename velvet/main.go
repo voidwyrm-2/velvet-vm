@@ -29,7 +29,9 @@ func main() {
 	version = strings.TrimSpace(version)
 
 	dumpStackAfterEachInstruction := flag.Bool("show", false, "Print the stack after each instruction")
-	dumpAtEnd := flag.Bool("show-end", false, "Dump the stack at the end of the program")
+	dumpStackAtEnd := flag.Bool("show-end", false, "Dump the stack at the end of the program")
+	dumpVarsAfterEachInstruction := flag.Bool("showvars", false, "Print the vars after each instruction")
+	// dumpVarsAtEnd := flag.Bool("showvars-end", false, "Dump the vars at the end of the program")
 	showVersion := flag.Bool("v", false, "Show the current Velvet version")
 
 	flag.Parse()
@@ -52,10 +54,16 @@ func main() {
 	}
 
 	virmac := vm.New()
-	if err = virmac.Run(content, *dumpStackAfterEachInstruction); err != nil {
+	if err = virmac.Run(content, *dumpStackAfterEachInstruction, *dumpVarsAfterEachInstruction); err != nil {
 		fmt.Println(err.Error())
 		return
-	} else if *dumpAtEnd && !*dumpStackAfterEachInstruction {
-		fmt.Println(virmac.DumpStack())
+	} else {
+		if *dumpStackAtEnd && !*dumpStackAfterEachInstruction {
+			fmt.Println(virmac.DumpStack())
+		}
+
+		/*if *dumpVarsAtEnd && !*dumpVarsAfterEachInstruction {
+			fmt.Println(virmac.DumpVars())
+		}*/
 	}
 }

@@ -209,10 +209,15 @@ func (va *VelvetAsm) CreateLabel(name string) {
 	if _, ok := va.labels[name]; ok {
 		panic(fmt.Sprintf("label '%s' already exists", name))
 	}
-	va.labels[name] = uint32(20 + len(va.instructions)*7)
+	va.labels[name] = uint32(32 + len(va.instructions)*7)
 }
 
-func (va *VelvetAsm) GetLabel(name string) uint32 {
+func (va VelvetAsm) HasLabel(name string) bool {
+	_, ok := va.labels[name]
+	return ok
+}
+
+func (va VelvetAsm) GetLabel(name string) uint32 {
 	if addr, ok := va.labels[name]; !ok {
 		panic(fmt.Sprintf("label '%s' does not exist", name))
 	} else {
@@ -256,6 +261,17 @@ func (va *VelvetAsm) EmitBasic(op Opcode) {
 
 func (va *VelvetAsm) Halt(code int8) {
 	va.Emit(Halt, 0, uint16(code), 0)
+}
+
+func (va *VelvetAsm) DoDirective(name string, args ...any) {
+	switch name {
+	case "vars":
+		va.vars = uint16(args[0].(int))
+	case "entry":
+		va.SetEntry(uint32(args[0].(int)))
+	default:
+		panic("unknown directive '" + name + "'")
+	}
 }
 
 func (va *VelvetAsm) SetEntry(entryOffset uint32) {
