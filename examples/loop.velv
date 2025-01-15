@@ -1,0 +1,20 @@
+@vars 1
+
+push 0
+set 0
+
+.loop
+  get 0
+  dup
+  call println
+
+  push 1
+  add
+  set 0
+
+  get 0
+  push 10
+  lt
+  jt loop
+
+halt 0
