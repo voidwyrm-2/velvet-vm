@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/voidwyrm-2/velvet-vm/velvc/generation"
 	"github.com/voidwyrm-2/velvet-vm/velvc/generation/emitter"
 	"github.com/voidwyrm-2/velvet-vm/velvc/lexer"
 	"github.com/voidwyrm-2/velvet-vm/velvc/parser"
@@ -82,16 +83,12 @@ func main() {
 		}
 	}
 
-	ve := emitter.New(0)
+	gen := generation.New(nodes, 0)
 
-	for _, n := range nodes {
-		if err := n.Generate(&ve); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
-	}
-
-	if err := ve.Write(*output + ".cvelv"); err != nil {
+	if err := gen.Generate(); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	} else if err := gen.Write(*output); err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}

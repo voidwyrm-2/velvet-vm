@@ -17,7 +17,7 @@ func New(name tokens.Token, args []tokens.Token) DirectiveNode {
 	return DirectiveNode{name: name, args: args}
 }
 
-func (dn DirectiveNode) Generate(ve *emitter.VelvetAsm) error {
+func (dn DirectiveNode) Generate(ve *emitter.VelvEmitter) error {
 	a := []any{}
 	for _, arg := range dn.args {
 		if v, err := arg.Convert(); err != nil {

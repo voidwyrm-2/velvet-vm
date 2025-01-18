@@ -54,7 +54,7 @@ func (pcn PushCallNode) GenerateList() ([]any, error) {
 	return ls, nil
 }
 
-func (pcn PushCallNode) Generate(ve *emitter.VelvetAsm) error {
+func (pcn PushCallNode) Generate(ve *emitter.VelvEmitter) error {
 	if pcn.instruction.IsLit("call") {
 		if len(pcn.args) == 0 {
 			ve.EmitNA(emitter.Call, 1)

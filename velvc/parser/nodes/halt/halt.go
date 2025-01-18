@@ -20,7 +20,7 @@ func New(instruction, exitCode tokens.Token) HaltNode {
 	return HaltNode{instruction: instruction, exitCode: exitCode}
 }
 
-func (hn HaltNode) Generate(ve *emitter.VelvetAsm) error {
+func (hn HaltNode) Generate(ve *emitter.VelvEmitter) error {
 	ve.EmitNF32(emitter.Halt, uint32(assert(strconv.Atoi(hn.exitCode.GetLit()))))
 	return nil
 }

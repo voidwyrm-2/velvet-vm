@@ -6,6 +6,7 @@ import (
 	"reflect"
 )
 
+// Instruction opcode type
 type Opcode uint16
 
 const (
@@ -22,6 +23,9 @@ const (
 	Jump
 )
 
+/*
+Returns the name string of the opcode it's called on
+*/
 func (o Opcode) Name() string {
 	return []string{
 		"Nop",
@@ -56,11 +60,16 @@ func boolToUint8(b bool) uint8 {
 	return 0
 }
 
-type VelvetAsm struct {
-	vars  uint16
-	flags struct {
-		isLibrary, f2, f3, f4, f5, f6, f7, f8 bool
-	}
+type asmFlags struct {
+	isLibrary, f2, f3, f4, f5, f6, f7, f8 bool
+}
+
+/*
+Generates the bytecode for the cvelv (Velvet VM Executable) format
+*/
+type VelvEmitter struct {
+	vars         uint16
+	flags        asmFlags
 	programEntry uint32
 	instructions [][7]byte
 	labels       map[string]uint32
@@ -68,15 +77,21 @@ type VelvetAsm struct {
 	data         []byte
 }
 
-func New(vars uint16) VelvetAsm {
-	return VelvetAsm{vars: vars, instructions: [][7]byte{}, labels: map[string]uint32{}, staticCache: map[any][2]uint16{}, data: []byte{}}
+/*
+Creates an instance of a VelvEmitter with a given variable count
+*/
+func New(vars uint16) VelvEmitter {
+	return VelvEmitter{vars: vars, flags: asmFlags{isLibrary: false}, instructions: [][7]byte{}, labels: map[string]uint32{}, staticCache: map[any][2]uint16{}, data: []byte{}}
 }
 
-func (va VelvetAsm) flagsToUint8() uint8 {
+func (va VelvEmitter) flagsToUint8() uint8 {
 	return (boolToUint8(va.flags.isLibrary) << 7) + (boolToUint8(va.flags.f2) << 6) + (boolToUint8(va.flags.f3) << 5) + (boolToUint8(va.flags.f4) << 4) + (boolToUint8(va.flags.f5) << 3) + (boolToUint8(va.flags.f6) << 2) + (boolToUint8(va.flags.f7) << 1) + boolToUint8(va.flags.f8)
 }
 
-func (va VelvetAsm) Write(filename string) error {
+/*
+Writes the completed bytecode to the given path
+*/
+func (va VelvEmitter) Write(filename string) error {
 	output := []byte("Velvet Scarlatina")
 
 	output = append(output, va.flagsToUint8())
@@ -98,15 +113,24 @@ func (va VelvetAsm) Write(filename string) error {
 	return writeFile(filename, output)
 }
 
-func (va VelvetAsm) Data() []byte {
+/*
+Returns the data section as a byte slice
+*/
+func (va VelvEmitter) Data() []byte {
 	return va.data
 }
 
-func (va VelvetAsm) DataString() string {
+/*
+Returns the data section as a string
+*/
+func (va VelvEmitter) DataString() string {
 	return string(va.data)
 }
 
-func (va *VelvetAsm) AddNumber(value uint32) (uint16, uint16) {
+/*
+Appends an unsigned 32-bit integer to the data section
+*/
+func (va *VelvEmitter) AddNumber(value uint32) (uint16, uint16) {
 	if pos, ok := va.staticCache[value]; ok {
 		return pos[0], pos[1]
 	}
@@ -116,7 +140,10 @@ func (va *VelvetAsm) AddNumber(value uint32) (uint16, uint16) {
 	return addr, 4
 }
 
-func (va *VelvetAsm) AddBool(value bool) (uint16, uint16) {
+/*
+Appends a boolean to the data section
+*/
+func (va *VelvEmitter) AddBool(value bool) (uint16, uint16) {
 	if pos, ok := va.staticCache[value]; ok {
 		return pos[0], pos[1]
 	}
@@ -132,7 +159,10 @@ func (va *VelvetAsm) AddBool(value bool) (uint16, uint16) {
 	return addr, 1
 }
 
-func (va *VelvetAsm) AddString(value string) (uint16, uint16) {
+/*
+Appends a string to the data section
+*/
+func (va *VelvEmitter) AddString(value string) (uint16, uint16) {
 	// fmt.Println(value, va.staticCache)
 	// fmt.Println(va.DataString())
 	if pos, ok := va.staticCache[value]; ok {
@@ -149,7 +179,10 @@ func (va *VelvetAsm) AddString(value string) (uint16, uint16) {
 	return addr, uint16(len(value))
 }
 
-func (va *VelvetAsm) AddList(values ...any) (uint16, uint16) {
+/*
+Appends a list to the data section
+*/
+func (va *VelvEmitter) AddList(values ...any) (uint16, uint16) {
 	// fmt.Println(fmt.Sprintf("%v", values))
 	if pos, ok := va.staticCache[fmt.Sprintf("%v", values)]; ok {
 		return pos[0], pos[1]
@@ -205,19 +238,28 @@ func (va *VelvetAsm) AddList(values ...any) (uint16, uint16) {
 	return addr, uint16(len(values))
 }
 
-func (va *VelvetAsm) CreateLabel(name string) {
+/*
+Creates a label referring to the position of the current length of the instructions multiplied by 7
+*/
+func (va *VelvEmitter) CreateLabel(name string) {
 	if _, ok := va.labels[name]; ok {
 		panic(fmt.Sprintf("label '%s' already exists", name))
 	}
 	va.labels[name] = uint32(32 + len(va.instructions)*7)
 }
 
-func (va VelvetAsm) HasLabel(name string) bool {
+/*
+Returns if a label exists or not
+*/
+func (va VelvEmitter) HasLabel(name string) bool {
 	_, ok := va.labels[name]
 	return ok
 }
 
-func (va VelvetAsm) GetLabel(name string) uint32 {
+/*
+Gets the address of a label
+*/
+func (va VelvEmitter) GetLabel(name string) uint32 {
 	if addr, ok := va.labels[name]; !ok {
 		panic(fmt.Sprintf("label '%s' does not exist", name))
 	} else {
@@ -225,55 +267,97 @@ func (va VelvetAsm) GetLabel(name string) uint32 {
 	}
 }
 
-func (va *VelvetAsm) Emit(op Opcode, flag uint8, one, two uint16) {
+/*
+Emits the instruction bytes of a generic instruction that uses the two argument shorts separately
+*/
+func (va *VelvEmitter) Emit(op Opcode, flag uint8, one, two uint16) {
 	va.instructions = append(va.instructions, [7]byte{byte(op >> 8), byte(op), flag, uint8(one >> 8), uint8(one), uint8(two >> 8), uint8(two)})
 }
 
-func (va *VelvetAsm) Emit32(op Opcode, flag uint8, both uint32) {
+/*
+Emits the instruction bytes of a generic instruction that uses the two argument shorts together as one number
+*/
+func (va *VelvEmitter) Emit32(op Opcode, flag uint8, both uint32) {
 	va.Emit(op, flag, uint16(both>>16), uint16(both))
 }
 
-func (va *VelvetAsm) EmitString(op Opcode, flag uint8, str string) {
+/*
+Emits the instruction bytes of a generic instruction that uses a string
+*/
+func (va *VelvEmitter) EmitString(op Opcode, flag uint8, str string) {
 	addr, length := va.AddString(str)
 	va.Emit(op, flag, addr, length)
 }
 
-func (va *VelvetAsm) EmitList(op Opcode, flag uint8, values ...any) {
+/*
+Emits the instruction bytes of a generic instruction that uses a list
+*/
+func (va *VelvEmitter) EmitList(op Opcode, flag uint8, values ...any) {
 	addr, length := va.AddList(values...)
 	va.Emit(op, flag, addr, length)
 }
 
-func (va *VelvetAsm) EmitNF(op Opcode, one, two uint16) {
+/*
+Emits the instruction bytes of a generic instruction that doesn't have a flag and uses the two argument shorts separately
+*/
+func (va *VelvEmitter) EmitNF(op Opcode, one, two uint16) {
 	va.Emit(op, 0, one, two)
 }
 
-func (va *VelvetAsm) EmitNF32(op Opcode, both uint32) {
+/*
+Emits the instruction bytes of a generic instruction that doesn't have a flag and uses the two argument shorts together as one number
+*/
+func (va *VelvEmitter) EmitNF32(op Opcode, both uint32) {
 	va.Emit32(op, 0, both)
 }
 
-func (va *VelvetAsm) EmitNA(op Opcode, flag uint8) {
+/*
+Emits the instruction bytes of a generic instruction that doesn't use any arguments
+*/
+func (va *VelvEmitter) EmitNA(op Opcode, flag uint8) {
 	va.Emit(op, flag, 0, 0)
 }
 
-func (va *VelvetAsm) EmitBasic(op Opcode) {
+/*
+Emits the instruction bytes of a generic instruction that doesn't have a flag nor use any arguments
+*/
+func (va *VelvEmitter) EmitBasic(op Opcode) {
 	va.Emit(op, 0, 0, 0)
 }
 
-func (va *VelvetAsm) Halt(code int8) {
+/*
+Emits the instruction bytes of the Halt instruction
+*/
+func (va *VelvEmitter) Halt(code int8) {
 	va.Emit(Halt, 0, uint16(code), 0)
 }
 
-func (va *VelvetAsm) DoDirective(name string, args ...any) {
+/*
+Executes a directive with the given arguments
+*/
+func (va *VelvEmitter) DoDirective(name string, args ...any) {
 	switch name {
 	case "vars":
 		va.vars = uint16(args[0].(int))
 	case "entry":
 		va.SetEntry(uint32(args[0].(int)))
+	case "lib", "library":
+		va.SetLibrary(true)
 	default:
 		panic("unknown directive '" + name + "'")
 	}
 }
 
-func (va *VelvetAsm) SetEntry(entryOffset uint32) {
+/*
+Sets the program entry offset
+*/
+func (va *VelvEmitter) SetEntry(entryOffset uint32) {
 	va.programEntry = entryOffset
+}
+
+/*
+Sets the isLibrary flag
+*/
+func (va *VelvEmitter) SetLibrary(isLibrary bool) {
+	va.flags.isLibrary = isLibrary
 }

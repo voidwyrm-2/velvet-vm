@@ -20,7 +20,7 @@ func New(instruction, varIndex tokens.Token) SetgetNode {
 	return SetgetNode{instruction: instruction, varIndex: varIndex}
 }
 
-func (sn SetgetNode) Generate(ve *emitter.VelvetAsm) error {
+func (sn SetgetNode) Generate(ve *emitter.VelvEmitter) error {
 	var f uint8 = 0
 	if sn.instruction.GetLit() == "get" {
 		f = 1

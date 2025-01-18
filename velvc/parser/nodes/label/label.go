@@ -15,7 +15,7 @@ func New(name tokens.Token) LabelNode {
 	return LabelNode{name: name}
 }
 
-func (ln LabelNode) Generate(ve *emitter.VelvetAsm) error {
+func (ln LabelNode) Generate(ve *emitter.VelvEmitter) error {
 	ve.CreateLabel(ln.name.GetLit())
 	return nil
 }

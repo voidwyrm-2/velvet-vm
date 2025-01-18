@@ -15,7 +15,7 @@ func New(instruction, label tokens.Token) JumpNode {
 	return JumpNode{instruction: instruction, label: label}
 }
 
-func (jn JumpNode) Generate(ve *emitter.VelvetAsm) error {
+func (jn JumpNode) Generate(ve *emitter.VelvEmitter) error {
 	ve.Emit32(emitter.Jump, map[string]uint8{"j": 0, "jt": 1, "jf": 2, "je": 3, "jne": 4}[jn.instruction.GetLit()], ve.GetLabel(jn.label.GetLit()))
 	return nil
 }

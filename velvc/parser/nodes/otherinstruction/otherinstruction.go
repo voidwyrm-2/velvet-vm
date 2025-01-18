@@ -15,7 +15,7 @@ func New(instruction tokens.Token) OtherInstructionNode {
 	return OtherInstructionNode{instruction: instruction}
 }
 
-func (oin OtherInstructionNode) Generate(ve *emitter.VelvetAsm) error {
+func (oin OtherInstructionNode) Generate(ve *emitter.VelvEmitter) error {
 	ve.EmitBasic(map[string]emitter.Opcode{
 		"nop":  0,
 		"ret":  1,
