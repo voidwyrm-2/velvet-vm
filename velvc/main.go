@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/voidwyrm-2/velvet-vm/velvc/generation"
-	"github.com/voidwyrm-2/velvet-vm/velvc/generation/emitter"
 	"github.com/voidwyrm-2/velvet-vm/velvc/lexer"
 	"github.com/voidwyrm-2/velvet-vm/velvc/parser"
 	"github.com/voidwyrm-2/velvet-vm/velvc/sectioner"
