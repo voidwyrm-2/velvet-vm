@@ -18,10 +18,11 @@
     2. Treats the instruction arguments as an address and length for a string
     3. Treats the instruction arguments as an address and length for a list
     4. Treats the instruction arguments as an address and length for the name of a function
+    5. Pushes the error message register onto the stack
 5. pop: discards a value off the stack (`[a] -> []`)
 6. dup: duplicates a value on the stack (`[a] -> [a b]`)
 7. swap: swaps the top and second from top values on the stack (`[a b] -> [b a]`)
-8. rot: swaps the top and third from top values on the stack (`[a b] -> [b a]`)
+8. rot: swaps the top and third from top values on the stack (`[a b c] -> [c b a]`)
 9. set/get (int16): sets or gets a variable, taking from or pushing onto the stack
 
     **Flags**<br>
@@ -35,6 +36,8 @@
     2. Instruction only jumps if the stack item is `false`
     3. Instruction only jumps if the error flag is true (a previous function call errored out)
     4. Instruction only jumps if the error flag is false (a previous function call did not error out)
+
+10(.5). br/brt/brf/bre/brne (label): works exactly the same as the jump instructions, but allows for `ret` to work
 
 # Function Instructions
 

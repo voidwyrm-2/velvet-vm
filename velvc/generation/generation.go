@@ -14,7 +14,7 @@ func New(nodes []nodes.Node, vars uint16) Generator {
 	return Generator{nodes: nodes, ve: emitter.New(vars)}
 }
 
-func (g Generator) Generate() error {
+func (g *Generator) Generate() error {
 	for _, n := range g.nodes {
 		if err := n.Generate(&g.ve); err != nil {
 			return err

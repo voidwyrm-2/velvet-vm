@@ -63,6 +63,8 @@ func (pcn PushCallNode) Generate(ve *emitter.VelvEmitter) error {
 		} else {
 			ve.EmitString(emitter.Call, 0, pcn.args[0].GetLit())
 		}
+	} else if pcn.instruction.IsLit("pusherr") {
+		ve.EmitNA(emitter.Push, 5)
 	} else {
 		switch pcn.args[pcn.ins].GetKind() {
 		case tokens.Number:

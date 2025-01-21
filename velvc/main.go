@@ -1,10 +1,12 @@
 package main
 
 import (
+	_ "embed"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/voidwyrm-2/velvet-vm/velvc/generation"
@@ -24,7 +26,13 @@ func readFile(fileName string) (string, error) {
 	return string(b), err
 }
 
+//go:embed version.txt
+var version string
+
 func main() {
+	version = strings.TrimSpace(version)
+
+	showVersion := flag.Bool("v", false, "Show the current Velvc version")
 	showTokens := flag.Bool("tokens", false, "Print the generated lexer tokens")
 	showSectioned := flag.Bool("sectioned", false, "Print the sectioned tokens")
 	showNodes := flag.Bool("nodes", false, "Print the generated parser nodes")
@@ -33,10 +41,19 @@ func main() {
 
 	flag.Parse()
 
+	if *showVersion {
+		fmt.Println(version)
+		return
+	}
+
 	args := flag.Args()
 	if len(args) == 0 {
 		fmt.Println("expected 'velvc <file>'")
 		os.Exit(1)
+	}
+
+	if path.Ext(*output) != ".cvelv" {
+		*output += ".cvelv"
 	}
 
 	content, err := readFile(args[0])

@@ -69,7 +69,7 @@ func (p Parser) Parse() ([]nodes.Node, error) {
 				}
 				ns = append(ns, halt.New(head, l[0]))
 				continue
-			case "push":
+			case "push", "pusherr":
 				if err := expect(l, tokens.Number); false {
 				} else if err2 := expect(l, tokens.String); false {
 				} else if err3 := expect(l, tokens.Number); false {
@@ -136,7 +136,7 @@ func (p Parser) Parse() ([]nodes.Node, error) {
 				}
 				ns = append(ns, setget.New(head, l[0]))
 				continue
-			case "j", "jt", "jf", "je", "jne":
+			case "j", "jt", "jf", "je", "jne", "br", "brt", "brf", "bre", "brne":
 				if err := expect(l, tokens.Ident); err != nil {
 					return []nodes.Node{}, err
 				}

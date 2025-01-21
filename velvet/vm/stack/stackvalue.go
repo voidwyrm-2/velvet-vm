@@ -25,7 +25,7 @@ type StackValue struct {
 	stringVal string
 	listVal   []StackValue
 	boolVal   bool
-	funcVal   func(st *Stack) bool
+	funcVal   func(st *Stack) error
 	kind      ValueKind
 }
 
@@ -57,7 +57,7 @@ func AllocInitListValue(size int, value StackValue) StackValue {
 	return l
 }
 
-func NewFuncValue(value func(st *Stack) bool) StackValue {
+func NewFuncValue(value func(st *Stack) error) StackValue {
 	return StackValue{kind: Function, funcVal: value}
 }
 
@@ -89,7 +89,7 @@ func (sv StackValue) GetList() []StackValue {
 	return sv.listVal
 }
 
-func (sv StackValue) GetFunc() func(st *Stack) bool {
+func (sv StackValue) GetFunc() func(st *Stack) error {
 	return sv.funcVal
 }
 

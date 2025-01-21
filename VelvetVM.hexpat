@@ -5,7 +5,7 @@ import std.mem;
 import std.core;
 import std.io;
 
-std::core::set_endian(std::mem::Endian::Big); // Velvet bytecode uses big endian for all of it's numbers
+std::core::set_endian(std::mem::Endian::Big); // Velvet bytecode uses big endian for all of its numbers
 
 struct InfoSection { // contains information about the file and program
     char signature[17] [[color("803D2F")]]; // signature
@@ -29,14 +29,21 @@ enum Opcode : u16 {
     SWAP = 7,
     ROT = 8,
     VAROP = 9,
-    JUMP = 10
+    JUMPBRANCH = 10
 };
 
 enum PushFlag : u8 {
     NUMBER = 0,
     BOOL = 1,
     STRING = 2,
-    LIST = 3
+    LIST = 3,
+    FUNCTION = 4,
+    ERRREG = 5
+};
+
+enum CallFlag : u8 {
+    FUNCTION_IN_LIBRARY = 0,
+    FUNCTION_ON_STACK = 1
 };
 
 enum SetFlag : u8 {
@@ -44,22 +51,30 @@ enum SetFlag : u8 {
     GET = 1
 };
 
-enum JumpFlag : u8 {
-    UNCOND_JUMP = 0,
-    JUMP_IF_TRUE = 1,
-    JUMP_IF_FALSE = 2,
-    JUMP_IF_ERROR = 3,
-    JUMP_IF_NOT_ERROR = 4
+enum JumpBranchFlag : u8 {
+    UNCOND_JUMP = 0x0000,
+    UNCOND_BRANCH = 0x1000,
+    JUMP_IF_TRUE = 0x0001,
+    BRANCH_IF_TRUE = 0x1001,
+    JUMP_IF_FALSE = 0x0010,
+    BRANCH_IF_FALSE = 0x1010,
+    JUMP_IF_ERROR = 0x0011,
+    BRANCH_IF_ERROR = 0x1011,
+    JUMP_IF_NOT_ERROR = 0x0100,
+    BRANCH_IF_NOT_ERROR = 0x1100
 };
+
 
 struct Instruction {
     Opcode opcode [[color("FF0000")]];
     if (this.opcode == Opcode::PUSH) {
         PushFlag flag [[color("D85656")]];
+    } else if (this.opcode == Opcode::CALL) {
+        CallFlag flag [[color("D85656")]];
     } else if (this.opcode == Opcode::VAROP) {
         SetFlag flag [[color("D85656")]];
-    } else if (this.opcode == Opcode::JUMP) {
-        JumpFlag flag [[color("D85656")]];
+    } else if (this.opcode == Opcode::JUMPBRANCH) {
+        JumpBranchFlag flag [[color("D85656")]];
     } else {
         u8 flag [[color("D85656")]];
     }

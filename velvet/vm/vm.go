@@ -137,7 +137,7 @@ func makeListFromBytes(lb []byte, getBytes func(addr uint16, length uint) ([]byt
 
 type VelvetVM struct {
 	stack     stack.Stack
-	callables map[string]func(st *stack.Stack) bool
+	callables map[string]func(st *stack.Stack) error
 }
 
 func New() VelvetVM {
@@ -199,8 +199,15 @@ func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction, dumpVarsAfte
 		vars                  []stack.StackValue
 		dataAddr, entryOffset int
 		errFlag               bool
-		// errReg   string // might be used in the future to hold the error message from functions that errored out
+		errReg                string
 	)
+
+	setErr := func(e error) {
+		if e != nil {
+			errFlag = true
+			errReg = e.Error()
+		}
+	}
 
 	if _flags, _vars, _dataAddr, _entryOffset, ok := vm.VerifyBytecode(bytes); !ok {
 		return errors.New("malformed bytecode format")
@@ -248,14 +255,16 @@ func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction, dumpVarsAfte
 		case 3: // call
 			if fb.flags[0] {
 				vm.stack.Expect(stack.Function)
-				errFlag = vm.stack.Pop().GetFunc()(&vm.stack)
+				setErr(vm.stack.Pop().GetFunc()(&vm.stack))
 			} else {
 				if fnName, err := getBytes(args.one, uint(args.two)); err != nil {
 					return err
+				} else if string(fnName) == "getErr" {
+					vm.stack.Push(stack.NewStringValue(errReg))
 				} else if fn, ok := vm.callables[string(fnName)]; !ok {
 					return fmt.Errorf("function '%s' does not exist", string(fnName))
 				} else {
-					errFlag = fn(&vm.stack)
+					setErr(fn(&vm.stack))
 				}
 			}
 			pc += InstructionSize
@@ -285,6 +294,8 @@ func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction, dumpVarsAfte
 				} else {
 					vm.stack.Push(stack.NewFuncValue(fn))
 				}
+			case 5: // error register
+				vm.stack.Push(stack.NewStringValue(errReg))
 			default:
 				vm.stack.Push(stack.NewNumberValue(float32(int(args.both))))
 			}
@@ -322,10 +333,12 @@ func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction, dumpVarsAfte
 				vars[int(args.one)] = vm.stack.Pop()
 			}
 			pc += InstructionSize
-		case 10: // j/jt/jf/je/jne
+		case 10: // j/jt/jf/je/jne or br/brt/brf/bre/brne
 			cond := true
 
-			switch fb.num {
+			jumpType, isBranch := exactIsBranch(fb.num)
+
+			switch jumpType {
 			case 1:
 				vm.stack.Expect(stack.Bool)
 				cond = vm.stack.Pop().GetBool()
@@ -339,6 +352,9 @@ func (vm VelvetVM) Run(bytes []byte, dumpStackAfterEachInstruction, dumpVarsAfte
 			}
 
 			if cond {
+				if isBranch {
+					callstack = append(callstack, pc)
+				}
 				pc = int(args.both)
 			} else {
 				pc += InstructionSize
