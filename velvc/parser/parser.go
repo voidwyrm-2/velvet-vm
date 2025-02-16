@@ -36,6 +36,13 @@ type Parser struct {
 }
 
 func New(tokenL [][]tokens.Token) Parser {
+	filtered := [][]tokens.Token{}
+	for _, tl := range tokenL {
+		if len(tl) > 0 {
+			filtered = append(filtered, tl)
+		}
+	}
+
 	return Parser{tokenL: tokenL}
 }
 
